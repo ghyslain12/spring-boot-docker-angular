@@ -1,0 +1,27 @@
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
+
+@SpringBootTest
+@Transactional // Rollback automatique après chaque test
+public class UserControllerAuthTest {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    public void setUp() {
+        // Supprimer l'utilisateur existant avant d'insérer
+        jdbcTemplate.execute("DELETE FROM users WHERE email = 'testuser@example.com'");
+
+        // Insérer l'utilisateur pour le test
+        jdbcTemplate.update(
+            "INSERT INTO users (created_at, email, name, password, updated_at) VALUES (?, ?, ?, ?, ?)",
+            "2025-01-01 00:00:00", "testuser@example.com", "Test User", "hashedpassword", "2025-01-01 00:00:00"
+        );
+    }
+
+    // Tes méthodes de test ici
+}

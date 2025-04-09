@@ -1,0 +1,97 @@
+package com.example.backend.repository;
+
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.Sale;
+import com.example.backend.entity.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@DataJpaTest(excludeAutoConfiguration = SecurityAutoConfiguration.class) 
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) 
+@ActiveProfiles("test")
+public class SaleRepositoryTest {
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private SaleRepository saleRepository;
+
+    private Customer testCustomer;
+
+    @BeforeEach
+    void setUp() {
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com");
+        user.setPassword("password");
+        entityManager.persist(user);
+
+        testCustomer = new Customer();
+        testCustomer.setSurnom("TestCustomer");
+        testCustomer.setUser(user);
+        entityManager.persist(testCustomer);
+    }
+
+    @Test
+    void testSaveSale() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+
+        Sale savedSale = saleRepository.save(sale);
+
+        assertNotNull(savedSale.getId());
+        assertEquals("TestSale", savedSale.getTitre());
+    }
+
+    @Test
+    void testFindById() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        entityManager.persist(sale);
+
+        Sale foundSale = saleRepository.findById(sale.getId()).orElse(null);
+
+        assertNotNull(foundSale);
+        assertEquals("TestSale", foundSale.getTitre());
+    }
+
+    @Test
+    void testExistsByTitre() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        entityManager.persist(sale);
+
+        boolean exists = saleRepository.existsByTitre("TestSale");
+
+        assertTrue(exists);
+        assertFalse(saleRepository.existsByTitre("UnknownSale"));
+    }
+
+    @Test
+    void testDeleteSale() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        entityManager.persist(sale);
+
+        saleRepository.delete(sale);
+
+        assertFalse(saleRepository.findById(sale.getId()).isPresent());
+    }
+}

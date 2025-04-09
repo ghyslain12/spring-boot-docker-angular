@@ -1,0 +1,28 @@
+spring.application.name=backend
+spring.datasource.url=jdbc:mysql://mysql:3306/app?createDatabaseIfNotExist=true
+spring.datasource.username=gigi
+spring.datasource.password=gigi
+#spring.jpa.hibernate.ddl-auto=update
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+spring.flyway.enabled=true
+spring.jackson.date-format=yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ
+spring.jackson.time-zone=UTC
+#logging.level.org.springframework.web=DEBUG
+#logging.level.org.hibernate=DEBUG
+#logging.level.com.example.backend.service=DEBUG
+#logging.level.org.hibernate.SQL=DEBUG
+
+# Niveau global pour Hibernate à INFO au lieu de DEBUG
+logging.level.org.hibernate=INFO
+
+# Désactiver les logs SQL détaillés si non nécessaires
+logging.level.org.hibernate.SQL=INFO
+
+# Autres niveaux pour Spring ou ton application
+logging.level.org.springframework.web=INFO
+logging.level.com.example.backend.service=INFO
+
+spring.security.user.name=gigi
+spring.security.user.password=gigi

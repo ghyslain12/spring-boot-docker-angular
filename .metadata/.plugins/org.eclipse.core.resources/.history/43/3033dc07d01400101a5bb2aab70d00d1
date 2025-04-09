@@ -1,0 +1,145 @@
+package com.example.backend.controller;
+
+import com.example.backend.dto.SaleDTO;
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.Sale;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.SaleRepository;
+import com.example.backend.security.JwtUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+public class SaleControllerAuthTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private SaleRepository saleRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private String token;
+
+    @BeforeEach
+    public void setUp() {
+        saleRepository.deleteAll();
+        customerRepository.deleteAll();
+
+        // Créer un customer pour les tests
+        Customer customer = new Customer();
+        customer.setSurnom("Test Customer");
+        customer.setCreatedAt(LocalDateTime.now());
+        customer.setUpdatedAt(LocalDateTime.now());
+        customerRepository.save(customer);
+
+        // Générer un token JWT
+        token = jwtUtil.generateToken("gigi@gigi.com");
+    }
+
+    @Test
+    public void testGetAllSalesAuthenticated() throws Exception {
+        mockMvc.perform(get("/api/sale")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    public void testCreateSaleAuthenticated() throws Exception {
+        SaleDTO saleDTO = new SaleDTO();
+        saleDTO.setTitre("Test Sale");
+        saleDTO.setDescription("Test Description");
+        saleDTO.setCustomerId(customerRepository.findAll().get(0).getId());
+        Map<String, Boolean> materials = new HashMap<>();
+        saleDTO.setMaterial(materials);
+
+        mockMvc.perform(post("/api/sale")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Test Sale"));
+    }
+
+    @Test
+    public void testGetSaleByIdAuthenticated() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Test Sale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(customerRepository.findAll().get(0));
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        mockMvc.perform(get("/api/sale/" + sale.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Test Sale"));
+    }
+
+    @Test
+    public void testUpdateSaleAuthenticated() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Old Sale");
+        sale.setDescription("Old Description");
+        sale.setCustomer(customerRepository.findAll().get(0));
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        SaleDTO saleDTO = new SaleDTO();
+        saleDTO.setTitre("Updated Sale");
+        saleDTO.setDescription("Updated Description");
+        saleDTO.setCustomerId(customerRepository.findAll().get(0).getId());
+
+        mockMvc.perform(put("/api/sale/" + sale.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Updated Sale"));
+    }
+
+    @Test
+    public void testDeleteSaleAuthenticated() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Sale to Delete");
+        sale.setDescription("Description");
+        sale.setCustomer(customerRepository.findAll().get(0));
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        mockMvc.perform(delete("/api/sale/" + sale.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+}

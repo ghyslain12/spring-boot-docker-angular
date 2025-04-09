@@ -1,0 +1,165 @@
+package com.example.backend.service;
+
+import com.example.backend.dto.TicketDTO;
+import com.example.backend.dto.TicketResponseDTO;
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.Sale;
+import com.example.backend.entity.Ticket;
+import com.example.backend.entity.User;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.SaleRepository;
+import com.example.backend.repository.TicketRepository;
+import com.example.backend.repository.UserRepository;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+@Transactional
+@ActiveProfiles("test")
+public class TicketServiceTest {
+
+    @Autowired
+    private TicketService ticketService;
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
+    private SaleRepository saleRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    private Sale testSale;
+
+    @BeforeEach
+    void setUp() {
+        ticketRepository.deleteAll();
+        saleRepository.deleteAll();
+
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); 
+        user.setPassword("password");
+        userRepository.save(user);
+
+        Customer customer = new Customer();
+        customer.setSurnom("TestCustomer");
+        customer.setUser(user);
+        customerRepository.save(customer);
+
+        testSale = new Sale();
+        testSale.setTitre("TestSale");
+        testSale.setDescription("Test Description");
+        testSale.setCustomer(customer);
+        saleRepository.save(testSale);
+    }
+
+    @Test
+    void testGetAllTickets() {
+        Ticket ticket = new Ticket();
+        ticket.setTitre("TestTicket");
+        ticket.setDescription("Test Description");
+        ticket.addSale(testSale);
+        ticketRepository.save(ticket);
+
+        List<TicketResponseDTO> tickets = ticketService.getAllTickets();
+
+        assertEquals(1, tickets.size());
+        assertEquals("TestTicket", tickets.get(0).getTitre());
+    }
+
+    @Test
+    void testGetTicketById() {
+        Ticket ticket = new Ticket();
+        ticket.setTitre("TestTicket");
+        ticket.setDescription("Test Description");
+        ticketRepository.save(ticket);
+
+        TicketResponseDTO foundTicket = ticketService.getTicketById(ticket.getId());
+
+        assertEquals("TestTicket", foundTicket.getTitre());
+    }
+
+    @Test
+    void testGetTicketByIdNotFound() {
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            ticketService.getTicketById(999);
+        });
+        assertEquals("Ticket not found with id: 999", exception.getMessage());
+    }
+
+    @Test
+    void testCreateTicket() {
+        TicketDTO ticketDTO = new TicketDTO();
+        ticketDTO.setTitre("NewTicket");
+        ticketDTO.setDescription("New Description");
+        ticketDTO.setSaleId(testSale.getId());
+
+        TicketResponseDTO createdTicket = ticketService.createTicket(ticketDTO);
+
+        assertNotNull(createdTicket.getId());
+        assertEquals("NewTicket", createdTicket.getTitre());
+        assertEquals(1, createdTicket.getSales().size());
+    }
+
+    @Test
+    void testCreateTicketDuplicateTitre() {
+        Ticket ticket = new Ticket();
+        ticket.setTitre("TestTicket");
+        ticket.setDescription("Test Description");
+        ticketRepository.save(ticket);
+
+        TicketDTO ticketDTO = new TicketDTO();
+        ticketDTO.setTitre("TestTicket");
+        ticketDTO.setDescription("New Description");
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            ticketService.createTicket(ticketDTO);
+        });
+        assertEquals("Un ticket avec le titre 'TestTicket' existe déjà.", exception.getMessage());
+    }
+
+    @Test
+    void testUpdateTicket() {
+        Ticket ticket = new Ticket();
+        ticket.setTitre("TestTicket");
+        ticket.setDescription("Test Description");
+        ticketRepository.save(ticket);
+
+        TicketDTO ticketDTO = new TicketDTO();
+        ticketDTO.setTitre("UpdatedTicket");
+        ticketDTO.setDescription("Updated Description");
+        ticketDTO.setSaleId(testSale.getId());
+
+        TicketResponseDTO updatedTicket = ticketService.updateTicket(ticket.getId(), ticketDTO);
+
+        assertEquals("UpdatedTicket", updatedTicket.getTitre());
+        assertEquals("Updated Description", updatedTicket.getDescription());
+        assertEquals(1, updatedTicket.getSales().size());
+    }
+
+    @Test
+    void testDeleteTicket() {
+        Ticket ticket = new Ticket();
+        ticket.setTitre("TestTicket");
+        ticket.setDescription("Test Description");
+        ticketRepository.save(ticket);
+
+        ticketService.deleteTicket(ticket.getId());
+
+        assertFalse(ticketRepository.findById(ticket.getId()).isPresent());
+    }
+}

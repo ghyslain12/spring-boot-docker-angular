@@ -1,0 +1,112 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.Material;
+import com.example.backend.repository.MaterialRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+public class MaterialControllerNoAuthTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private MaterialRepository materialRepository;
+
+    private Material testMaterial;
+
+    @BeforeEach
+    void setUp() {
+        materialRepository.deleteAll();
+
+        testMaterial = new Material();
+        testMaterial.setDesignation("TestMaterial");
+        materialRepository.save(testMaterial);
+    }
+
+    @Test
+    void testGetAllMaterialsWithoutAuthForbidden() throws Exception {
+        mockMvc.perform(get("/api/material")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testGetMaterialByIdWithoutAuthForbidden() throws Exception {
+        mockMvc.perform(get("/api/material/" + testMaterial.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testGetMaterialByIdWithoutAuthNotFoundForbidden() throws Exception {
+        mockMvc.perform(get("/api/material/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testCreateMaterialWithoutAuthForbidden() throws Exception {
+        String newMaterialJson = "{\"designation\":\"NewMaterial\"}";
+
+        mockMvc.perform(post("/api/material")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newMaterialJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testUpdateMaterialWithoutAuthForbidden() throws Exception {
+        String updatedMaterialJson = "{\"designation\":\"UpdatedMaterial\"}";
+
+        mockMvc.perform(put("/api/material/" + testMaterial.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedMaterialJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testUpdateMaterialWithoutAuthNotFoundForbidden() throws Exception {
+        String updatedMaterialJson = "{\"designation\":\"UpdatedMaterial\"}";
+
+        mockMvc.perform(put("/api/material/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedMaterialJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testDeleteMaterialWithoutAuthForbidden() throws Exception {
+        mockMvc.perform(delete("/api/material/" + testMaterial.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testDeleteMaterialWithoutAuthNotFoundForbidden() throws Exception {
+        mockMvc.perform(delete("/api/material/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testPingWithoutAuthForbidden() throws Exception {
+        mockMvc.perform(get("/api/material/ping")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+}

@@ -1,0 +1,150 @@
+package com.example.backend.service;
+
+import com.example.backend.dto.CustomerDTO;
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.User;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.UserRepository;
+import com.example.backend.service.CustomerService;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+@Transactional
+public class CustomerServiceTest {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        customerRepository.deleteAll();
+        userRepository.deleteAll();
+
+        testUser = new User();
+        testUser.setName("TestUser");
+        testUser.setEmail("testuser@example.com");
+        testUser.setPassword("password");
+        userRepository.save(testUser);
+    }
+
+    @Test
+    void testGetAllCustomers() {
+        Customer customer = new Customer();
+        customer.setSurnom("TestCustomer");
+        customer.setUser(testUser);
+        customerRepository.save(customer);
+
+        List<Customer> customers = customerService.getAllCustomers();
+
+        assertEquals(1, customers.size());
+        assertEquals("TestCustomer", customers.get(0).getSurnom());
+    }
+
+    @Test
+    void testGetCustomerById() {
+        Customer customer = new Customer();
+        customer.setSurnom("TestCustomer");
+        customer.setUser(testUser);
+        customerRepository.save(customer);
+
+        Customer foundCustomer = customerService.getCustomerById(customer.getId());
+
+        assertEquals("TestCustomer", foundCustomer.getSurnom());
+    }
+
+    @Test
+    void testGetCustomerByIdNotFound() {
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            customerService.getCustomerById(999);
+        });
+        assertEquals("Customer not found with id: 999", exception.getMessage());
+    }
+
+    @Test
+    void testCreateCustomer() {
+        CustomerDTO customerDTO = new CustomerDTO();
+        customerDTO.setSurnom("NewCustomer");
+        customerDTO.setUserId(testUser.getId());
+
+        Customer createdCustomer = customerService.createCustomer(customerDTO);
+
+        assertNotNull(createdCustomer.getId());
+        assertEquals("NewCustomer", createdCustomer.getSurnom());
+        assertEquals(testUser.getId(), createdCustomer.getUser().getId());
+    }
+
+    @Test
+    void testCreateCustomerDuplicateSurnom() {
+        Customer customer = new Customer();
+        customer.setSurnom("TestCustomer");
+        customer.setUser(testUser);
+        customerRepository.save(customer);
+
+        CustomerDTO customerDTO = new CustomerDTO();
+        customerDTO.setSurnom("TestCustomer");
+        customerDTO.setUserId(testUser.getId());
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            customerService.createCustomer(customerDTO);
+        });
+        assertEquals("Un customer avec le surnom 'TestCustomer' existe déjà.", exception.getMessage());
+    }
+
+    @Test
+    void testCreateCustomerInvalidUser() {
+        CustomerDTO customerDTO = new CustomerDTO();
+        customerDTO.setSurnom("NewCustomer");
+        customerDTO.setUserId(999);
+
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            customerService.createCustomer(customerDTO);
+        });
+        assertEquals("User not found with id: 999", exception.getMessage());
+    }
+
+    @Test
+    void testUpdateCustomer() {
+        Customer customer = new Customer();
+        customer.setSurnom("TestCustomer");
+        customer.setUser(testUser);
+        customerRepository.save(customer);
+
+        CustomerDTO customerDTO = new CustomerDTO();
+        customerDTO.setSurnom("UpdatedCustomer");
+        customerDTO.setUserId(testUser.getId());
+
+        Customer updatedCustomer = customerService.updateCustomer(customer.getId(), customerDTO);
+
+        assertEquals("UpdatedCustomer", updatedCustomer.getSurnom());
+        assertEquals(testUser.getId(), updatedCustomer.getUser().getId());
+    }
+
+    @Test
+    void testDeleteCustomer() {
+        Customer customer = new Customer();
+        customer.setSurnom("TestCustomer");
+        customer.setUser(testUser);
+        customerRepository.save(customer);
+
+        customerService.deleteCustomer(customer.getId());
+
+        assertFalse(customerRepository.findById(customer.getId()).isPresent());
+    }
+}

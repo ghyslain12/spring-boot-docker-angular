@@ -1,0 +1,17 @@
+package com.example.backend.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springdoc.core.properties.SwaggerUiConfigProperties;
+
+@Configuration
+public class SwaggerConfig {
+
+    @Bean
+    public SwaggerUiConfigProperties swaggerUiConfigProperties() {
+        SwaggerUiConfigProperties properties = new SwaggerUiConfigProperties();
+        properties.setEnabled(true); // Forcer Swagger UI actif
+        properties.getUrls().put("CRUD API Spring Boot", "/openapi.yaml"); // Ajouter l’URL du YAML
+        return properties;
+    }
+}

@@ -1,0 +1,100 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.User;
+import com.example.backend.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+public class AuthControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Value("${jwt.enable:true}")
+    private boolean jwtEnabled;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
+
+    @Test
+    void testRegister() throws Exception {
+        String uniqueEmail = "newuser_" + System.currentTimeMillis() + "@example.com";
+        String userJson = "{\"name\":\"NewUser\",\"email\":\"" + uniqueEmail + "\",\"password\":\"newpassword\"}";
+        if (jwtEnabled) {
+            mockMvc.perform(post("/api/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(userJson))
+                    .andExpect(status().isForbidden())
+                    .andExpect(content().string(""));
+        } else {
+            mockMvc.perform(post("/api/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(userJson))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string("User registered"));
+            
+            User savedUser = userRepository.findByEmail(uniqueEmail); 
+            assert savedUser != null;
+            assert savedUser.getName().equals("NewUser");
+        }        
+
+    }
+
+    @Test
+    void testLoginSuccess() throws Exception {
+        String uniqueEmail = "testuser_" + System.currentTimeMillis() + "@example.com";
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail(uniqueEmail);
+        user.setPassword(passwordEncoder.encode("newpassword"));
+        userRepository.save(user);
+
+        String loginJson = "{\"email\":\"" + uniqueEmail + "\",\"password\":\"newpassword\"}";
+        if (jwtEnabled) {
+            mockMvc.perform(post("/api/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(loginJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.token").exists());
+        } else {
+            mockMvc.perform(post("/api/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(loginJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.token").exists());
+        }
+    }
+
+    @Test
+    void testLoginFailure() throws Exception {
+        String loginJson = "{\"email\":\"wronguser@example.com\",\"password\":\"wrongpassword\"}";
+        mockMvc.perform(post("/api/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(loginJson))
+                .andExpect(status().isNotFound());
+    }
+}

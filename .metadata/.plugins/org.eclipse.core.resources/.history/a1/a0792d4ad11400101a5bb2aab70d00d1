@@ -1,0 +1,342 @@
+package com.example.backend.controller;
+
+import com.example.backend.dto.SaleDTO;
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.Sale;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.SaleRepository;
+import com.example.backend.security.JwtUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+public class SaleControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private SaleRepository saleRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private String token;
+    private Customer testCustomer;
+
+    @BeforeEach
+    public void setUp() {
+        saleRepository.deleteAll();
+        customerRepository.deleteAll();
+
+        // Créer un customer pour les tests
+        testCustomer = new Customer();
+        testCustomer.setSurnom("Test Customer");
+        testCustomer.setCreatedAt(LocalDateTime.now());
+        testCustomer.setUpdatedAt(LocalDateTime.now());
+        customerRepository.save(testCustomer);
+
+        // Générer un token JWT
+        token = jwtUtil.generateToken("gigi@gigi.com");
+    }
+
+    // Configuration pour désactiver l'authentification dans certains tests
+    @Configuration
+    static class NoAuthSecurityConfig {
+        @Bean
+        @Primary
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+            http
+                .csrf().disable()
+                .cors().and()
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+                    .anyRequest().permitAll());
+            return http.build();
+        }
+    }
+
+    // Méthode utilitaire pour créer un SaleDTO
+    private SaleDTO createSaleDTO(String titre, String description, Integer customerId) {
+        SaleDTO saleDTO = new SaleDTO();
+        saleDTO.setTitre(titre);
+        saleDTO.setDescription(description);
+        saleDTO.setCustomerId(customerId);
+        // Pas besoin de setMaterials, car materials est déjà initialisé comme HashMap vide
+        return saleDTO;
+    }
+
+    // Tests authentifiés - Succès
+    @Test
+    public void testGetAllSalesWithAuthSuccess() throws Exception {
+        mockMvc.perform(get("/api/sale")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    public void testCreateSaleWithAuthSuccess() throws Exception {
+        SaleDTO saleDTO = createSaleDTO("Test Sale", "Test Description", testCustomer.getId());
+
+        mockMvc.perform(post("/api/sale")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Test Sale"));
+    }
+
+    @Test
+    public void testGetSaleByIdWithAuthSuccess() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Test Sale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        mockMvc.perform(get("/api/sale/" + sale.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Test Sale"));
+    }
+
+    @Test
+    public void testUpdateSaleWithAuthSuccess() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Old Sale");
+        sale.setDescription("Old Description");
+        sale.setCustomer(testCustomer);
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        SaleDTO saleDTO = createSaleDTO("Updated Sale", "Updated Description", testCustomer.getId());
+
+        mockMvc.perform(put("/api/sale/" + sale.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Updated Sale"));
+    }
+
+    @Test
+    public void testDeleteSaleWithAuthSuccess() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Sale to Delete");
+        sale.setDescription("Description");
+        sale.setCustomer(testCustomer);
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        mockMvc.perform(delete("/api/sale/" + sale.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    // Tests authentifiés - Erreurs
+    @Test
+    public void testGetSaleByIdWithAuthNotFound() throws Exception {
+        mockMvc.perform(get("/api/sale/999")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Sale not found with id: 999"));
+    }
+
+    @Test
+    public void testCreateSaleWithAuthDuplicateTitre() throws Exception {
+        Sale existingSale = new Sale();
+        existingSale.setTitre("Duplicate Sale");
+        existingSale.setDescription("Description");
+        existingSale.setCustomer(testCustomer);
+        existingSale.setCreatedAt(LocalDateTime.now());
+        existingSale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(existingSale);
+
+        SaleDTO saleDTO = createSaleDTO("Duplicate Sale", "New Description", testCustomer.getId());
+
+        mockMvc.perform(post("/api/sale")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Une vente avec le titre 'Duplicate Sale' existe déjà."));
+    }
+
+    @Test
+    public void testCreateSaleWithAuthInvalidCustomerId() throws Exception {
+        SaleDTO saleDTO = createSaleDTO("Test Sale", "Test Description", 999);
+
+        mockMvc.perform(post("/api/sale")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Customer not found with id: 999"));
+    }
+
+    @Test
+    public void testUpdateSaleWithAuthNotFound() throws Exception {
+        SaleDTO saleDTO = createSaleDTO("Updated Sale", "Updated Description", testCustomer.getId());
+
+        mockMvc.perform(put("/api/sale/999")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Sale not found with id: 999"));
+    }
+
+    @Test
+    public void testDeleteSaleWithAuthNotFound() throws Exception {
+        mockMvc.perform(delete("/api/sale/999")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Sale not found with id: 999"));
+    }
+
+    // Tests non authentifiés - Succès
+    @Test
+    public void testGetAllSalesNoAuthSuccess() throws Exception {
+        mockMvc.perform(get("/api/sale")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    public void testCreateSaleNoAuthSuccess() throws Exception {
+        SaleDTO saleDTO = createSaleDTO("Test Sale", "Test Description", testCustomer.getId());
+
+        mockMvc.perform(post("/api/sale")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Test Sale"));
+    }
+
+    @Test
+    public void testGetSaleByIdNoAuthSuccess() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Test Sale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        mockMvc.perform(get("/api/sale/" + sale.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Test Sale"));
+    }
+
+    @Test
+    public void testUpdateSaleNoAuthSuccess() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Old Sale");
+        sale.setDescription("Old Description");
+        sale.setCustomer(testCustomer);
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        SaleDTO saleDTO = createSaleDTO("Updated Sale", "Updated Description", testCustomer.getId());
+
+        mockMvc.perform(put("/api/sale/" + sale.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titre").value("Updated Sale"));
+    }
+
+    @Test
+    public void testDeleteSaleNoAuthSuccess() throws Exception {
+        Sale sale = new Sale();
+        sale.setTitre("Sale to Delete");
+        sale.setDescription("Description");
+        sale.setCustomer(testCustomer);
+        sale.setCreatedAt(LocalDateTime.now());
+        sale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(sale);
+
+        mockMvc.perform(delete("/api/sale/" + sale.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    // Tests non authentifiés - Erreurs
+    @Test
+    public void testGetSaleByIdNoAuthNotFound() throws Exception {
+        mockMvc.perform(get("/api/sale/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Sale not found with id: 999"));
+    }
+
+    @Test
+    public void testCreateSaleNoAuthDuplicateTitre() throws Exception {
+        Sale existingSale = new Sale();
+        existingSale.setTitre("Duplicate Sale");
+        existingSale.setDescription("Description");
+        existingSale.setCustomer(testCustomer);
+        existingSale.setCreatedAt(LocalDateTime.now());
+        existingSale.setUpdatedAt(LocalDateTime.now());
+        saleRepository.save(existingSale);
+
+        SaleDTO saleDTO = createSaleDTO("Duplicate Sale", "New Description", testCustomer.getId());
+
+        mockMvc.perform(post("/api/sale")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(saleDTO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Une

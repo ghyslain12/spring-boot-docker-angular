@@ -1,0 +1,175 @@
+package com.example.backend.service;
+
+import com.example.backend.dto.SaleDTO;
+import com.example.backend.dto.SaleMaterialResponseDTO;
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.Material;
+import com.example.backend.entity.Sale;
+import com.example.backend.entity.User;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.MaterialRepository;
+import com.example.backend.repository.SaleRepository;
+import com.example.backend.repository.UserRepository;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+@Transactional
+@ActiveProfiles("test")
+public class SaleServiceTest {
+
+    @Autowired
+    private SaleService saleService;
+
+    @Autowired
+    private SaleRepository saleRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Autowired
+    private MaterialRepository materialRepository;
+
+    private Customer testCustomer;
+    private Material testMaterial;
+
+    @BeforeEach
+    void setUp() {
+        saleRepository.deleteAll();
+        customerRepository.deleteAll();
+        materialRepository.deleteAll();
+
+        User user = new User();
+        user.setName("TestUser");
+        testUser.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("password");
+        userRepository.save(user);
+
+        testCustomer = new Customer();
+        testCustomer.setSurnom("TestCustomer");
+        testCustomer.setUser(user);
+        customerRepository.save(testCustomer);
+
+        testMaterial = new Material();
+        testMaterial.setDesignation("TestMaterial");
+        materialRepository.save(testMaterial);
+    }
+
+    @Test
+    void testGetAllSales() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        sale.addMaterial(testMaterial);
+        saleRepository.save(sale);
+
+        List<SaleMaterialResponseDTO> sales = saleService.getAllSales();
+
+        assertEquals(1, sales.size());
+        assertEquals("TestSale", sales.get(0).getTitre());
+        assertEquals(1, sales.get(0).getMaterials().size());
+    }
+
+    @Test
+    void testGetSaleById() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        saleRepository.save(sale);
+
+        SaleMaterialResponseDTO foundSale = saleService.getSaleById(sale.getId());
+
+        assertEquals("TestSale", foundSale.getTitre());
+    }
+
+    @Test
+    void testGetSaleByIdNotFound() {
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            saleService.getSaleById(999);
+        });
+        assertEquals("Sale not found with id: 999", exception.getMessage());
+    }
+
+    @Test
+    void testCreateSale() {
+        SaleDTO saleDTO = new SaleDTO();
+        saleDTO.setTitre("NewSale");
+        saleDTO.setDescription("New Description");
+        saleDTO.setCustomerId(testCustomer.getId());
+        Map<String, Boolean> materials = new HashMap<>();
+        materials.put("material_" + testMaterial.getId(), true);
+        saleDTO.setMaterials(materials);
+
+        SaleMaterialResponseDTO createdSale = saleService.createSale(saleDTO);
+
+        assertNotNull(createdSale.getId());
+        assertEquals("NewSale", createdSale.getTitre());
+        assertEquals(1, createdSale.getMaterials().size());
+    }
+
+    @Test
+    void testCreateSaleDuplicateTitre() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        saleRepository.save(sale);
+
+        SaleDTO saleDTO = new SaleDTO();
+        saleDTO.setTitre("TestSale");
+        saleDTO.setCustomerId(testCustomer.getId());
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            saleService.createSale(saleDTO);
+        });
+        assertEquals("Une vente avec le titre 'TestSale' existe déjà.", exception.getMessage());
+    }
+
+    @Test
+    void testUpdateSale() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        saleRepository.save(sale);
+
+        SaleDTO saleDTO = new SaleDTO();
+        saleDTO.setTitre("UpdatedSale");
+        saleDTO.setDescription("Updated Description");
+        saleDTO.setCustomerId(testCustomer.getId());
+
+        SaleMaterialResponseDTO updatedSale = saleService.updateSale(sale.getId(), saleDTO);
+
+        assertEquals("UpdatedSale", updatedSale.getTitre());
+        assertEquals("Updated Description", updatedSale.getDescription());
+    }
+
+    @Test
+    void testDeleteSale() {
+        Sale sale = new Sale();
+        sale.setTitre("TestSale");
+        sale.setDescription("Test Description");
+        sale.setCustomer(testCustomer);
+        saleRepository.save(sale);
+
+        saleService.deleteSale(sale.getId());
+
+        assertFalse(saleRepository.findById(sale.getId()).isPresent());
+    }
+}

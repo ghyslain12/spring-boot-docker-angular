@@ -1,0 +1,76 @@
+version: '3.8'
+services:
+
+  # mysql container
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: 'gigi'
+      MYSQL_DATABASE: 'app'
+      MYSQL_USER: 'gigi'
+      MYSQL_PASSWORD: 'gigi'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app_spring_boot_angular
+
+  # phpmyadmin container
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: on-failure
+    depends_on:
+      - mysql
+    ports:
+      - "8082:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: gigi
+      PMA_PASSWORD: gigi
+    networks:
+      - app_spring_boot_angular
+
+  # spring boot container
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile
+    ports:
+      - "8741:8080"
+    volumes:
+      - ./backend:/app 
+    depends_on:
+      - mysql
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/app?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=gigi
+      - SPRING_DATASOURCE_PASSWORD=gigi
+      - SPRING_PROFILES_ACTIVE=test
+    networks:
+      - app_spring_boot_angular
+
+  # angular container
+  angular-app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development          
+    networks:
+      - app_spring_boot_angular
+
+networks:
+  app_spring_boot_angular:
+    driver: bridge
+
+volumes:
+  mysql-data:

@@ -1,0 +1,87 @@
+package com.example.backend.dto;
+
+import com.example.backend.entity.Material;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.LocalDateTime;
+
+
+public class MaterialResponseDTO {
+    private Integer id;
+    private String designation;
+
+    @JsonProperty("created_at")
+    private LocalDateTime createdAt;
+
+    @JsonProperty("updated_at")
+    private LocalDateTime updatedAt;
+
+    private PivotMaterial pivot;
+
+    public MaterialResponseDTO() {}
+
+    public MaterialResponseDTO(Material material, Integer saleId) {
+        this.id = material.getId();
+        this.designation = material.getDesignation();
+        this.createdAt = material.getCreatedAt();
+        this.updatedAt = material.getUpdatedAt();
+        this.pivot = new PivotMaterial(saleId, material.getId());
+    }
+
+    public Integer getId() {
+        return id;
+    }
+    public void setId(Integer id) {
+        this.id = id;
+    }
+    public String getDesignation() {
+        return designation;
+    }
+    public void setDesignation(String designation) {
+        this.designation = designation;
+    }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    public PivotMaterial getPivotMaterial() {
+        return pivot;
+    }
+    public void setPivotMaterial(PivotMaterial pivot) {
+        this.pivot = pivot;
+    }
+}
+
+
+class PivotMaterial {
+    @JsonProperty("material_id")
+    private Integer materialId;
+
+    @JsonProperty("sale_id")
+    private Integer saleId;
+
+    public PivotMaterial(Integer saleId, Integer materialId) {
+        this.saleId = saleId;
+        this.materialId = materialId;
+    }
+
+    public Integer getMaterialId() {
+        return materialId;
+    }
+    public void setMaterialId(Integer materialId) {
+        this.materialId = materialId;
+    }
+    public Integer getSaleId() {
+        return saleId;
+    }
+    public void setSaleId(Integer saleId) {
+        this.saleId = saleId;
+    }
+}

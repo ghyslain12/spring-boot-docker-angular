@@ -1,0 +1,46 @@
+package com.example.backend.dto;
+
+import com.example.backend.entity.Ticket;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class TicketResponseDTO {
+    private Integer id;
+    private String titre;
+    private String description;
+
+    @JsonProperty("created_at")
+    private LocalDateTime createdAt;
+
+    @JsonProperty("updated_at")
+    private LocalDateTime updatedAt;
+
+    private List<SaleResponseDTO> sales;
+
+    public TicketResponseDTO(Ticket ticket) {
+        this.id = ticket.getId();
+        this.titre = ticket.getTitre();
+        this.description = ticket.getDescription();
+        this.createdAt = ticket.getCreatedAt();
+        this.updatedAt = ticket.getUpdatedAt();
+        this.sales = ticket.getSales().stream()
+                .map(sale -> new SaleResponseDTO(sale, ticket.getId()))
+                .collect(Collectors.toList());
+    }
+
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
+    public String getTitre() { return titre; }
+    public void setTitre(String titre) { this.titre = titre; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public List<SaleResponseDTO> getSales() { return sales; }
+    public void setSales(List<SaleResponseDTO> sales) { this.sales = sales; }
+}

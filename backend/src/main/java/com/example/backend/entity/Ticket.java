@@ -1,0 +1,110 @@
+package com.example.backend.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Table(name = "tickets")
+public class Ticket {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(nullable = false)
+    private String titre;
+
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    private String description;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
+    
+	@ManyToMany(
+		fetch = FetchType.LAZY,
+		cascade = { 
+			CascadeType.PERSIST, 
+			CascadeType.MERGE 
+		}	
+	)
+	@JoinTable(
+		name = "sale_ticket",
+		joinColumns = @JoinColumn(name = "ticket_id"), 	
+		inverseJoinColumns = @JoinColumn(name = "sale_id")
+	)
+    private Set<Sale> sales = new HashSet<>(); 
+    
+	@Override
+	public String toString() {
+	    return "Ticket{id=" + id + ", titre=" + titre + "}";
+	}
+	
+	public void addSale(Sale sale) {
+        this.sales.add(sale);
+    }
+
+    public void removeSale(Sale sale) {
+        this.sales.remove(sale);
+    }
+
+    public void clearSales() {
+        for (Sale sale : new HashSet<>(sales)) { 
+            removeSale(sale);
+        }
+    }
+	
+	public Ticket() {
+    }
+	
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public String getTitre() {
+		return titre;
+	}
+
+	public void setTitre(String titre) {
+		this.titre = titre;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(LocalDateTime updatedAt) {
+		this.updatedAt = updatedAt;
+	}
+
+	public Set<Sale> getSales() {
+		return sales;
+	}
+
+	public void setSales(Set<Sale> sales) {
+		this.sales = sales;
+	}
+}

@@ -1,0 +1,27 @@
+package com.example.backend.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springdoc.core.properties.SwaggerUiConfigProperties;
+import org.springdoc.core.properties.AbstractSwaggerUiConfigProperties.SwaggerUrl;
+
+@Configuration
+public class SwaggerConfig {
+    private static final Logger logger = LoggerFactory.getLogger(SwaggerConfig.class);
+
+    @Bean
+    public SwaggerUiConfigProperties swaggerUiConfigProperties() {
+        SwaggerUiConfigProperties properties = new SwaggerUiConfigProperties();
+        properties.setEnabled(true); // Forcer Swagger UI actif
+        
+        // Utiliser SwaggerUrl avec le bon import
+        //SwaggerUrl swaggerUrl = new SwaggerUrl("CRUD API Spring Boot", "/openapi.yaml");
+        SwaggerUrl swaggerUrl = new SwaggerUrl("com.example", "/openapi.yaml", "CRUD API Spring Boot");
+        properties.getUrls().add(swaggerUrl); // Ajouter au Set
+        
+        logger.info("SwaggerUiConfigProperties initialized with URL: /openapi.yaml");
+        return properties;
+    }
+}

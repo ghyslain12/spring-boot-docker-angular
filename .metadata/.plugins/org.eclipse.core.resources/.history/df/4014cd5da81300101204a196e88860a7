@@ -1,0 +1,178 @@
+package com.example.backend.service;
+
+import com.example.backend.dto.TicketDTO;
+import com.example.backend.dto.TicketResponseDTO;
+import com.example.backend.entity.Sale;
+import com.example.backend.entity.Ticket;
+import com.example.backend.repository.SaleRepository;
+import com.example.backend.repository.TicketRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class TicketService {
+	private static final Logger logger = LoggerFactory.getLogger(TicketService.class);
+	
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
+    private SaleRepository saleRepository;
+    
+    @Transactional(readOnly = true)
+    public List<TicketResponseDTO> getAllTickets() {
+        logger.debug("getAllTickets");
+        List<Ticket> tickets = ticketRepository.findAll();
+        return tickets.stream()
+                .map(TicketResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public TicketResponseDTO getTicketById(Integer id) {
+        logger.debug("getTicketById");
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException(Ticket.class.getSimpleName() + " not found with id: " + id));
+        return new TicketResponseDTO(ticket);
+    }
+    
+    @Transactional
+    public TicketResponseDTO createTicket(TicketDTO ticketDTO) {
+        logger.debug("Début de createTicket pour titre: {}", ticketDTO.getTitre());
+        if (ticketRepository.existsByTitre(ticketDTO.getTitre())) {
+            throw new IllegalArgumentException("Un ticket avec le titre '" + ticketDTO.getTitre() + "' existe déjà.");
+        }
+
+        Ticket ticket = new Ticket();
+        ticket.setTitre(ticketDTO.getTitre());
+        ticket.setDescription(ticketDTO.getDescription());
+        ticket.setCreatedAt(LocalDateTime.now());
+        ticket.setUpdatedAt(LocalDateTime.now());
+        Ticket savedTicket = ticketRepository.save(ticket);
+        
+        logger.debug("createTicket count: " + ticketDTO.getSales().size());
+
+        if (ticketDTO.getSales() != null && !ticketDTO.getSales().isEmpty()) {
+        	List<Sale> sales = saleRepository.findAllById(ticketDTO.getSales());
+            for (Sale sale : sales) {
+                logger.debug("createTicket sale: " + sale);
+                savedTicket.addSale(sale);
+            }
+        }
+        
+        return new TicketResponseDTO(ticketRepository.findByIdWithSales(savedTicket.getId()).get());
+
+        //return savedTicket;
+    }
+
+    
+    /*@Transactional
+    public TicketResponseDTO createTicket(TicketDTO ticketDTO) {
+        logger.debug("Début de createTicket pour titre: {}", ticketDTO.getTitre());
+        if (ticketRepository.existsByTitre(ticketDTO.getTitre())) {
+            throw new IllegalArgumentException("Un ticket avec le titre '" + ticketDTO.getTitre() + "' existe déjà.");
+        }
+
+        Ticket ticket = new Ticket();
+        ticket.setTitre(ticketDTO.getTitre());
+        ticket.setDescription(ticketDTO.getDescription());
+        ticket.setCreatedAt(LocalDateTime.now());
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+        if (ticketDTO.getSales() != null && !ticketDTO.getSales().isEmpty()) {
+            List<Sale> sales = saleRepository.findAllById(ticketDTO.getSales());
+            for (Sale sale : sales) {
+                savedTicket.addSale(sale);
+            }
+        }
+        return new TicketResponseDTO(ticketRepository.findByIdWithSales(savedTicket.getId()).get());
+    }*/
+    
+    @Transactional
+    public TicketResponseDTO updateTicket(Integer id, TicketDTO ticketDTO) {
+        logger.debug("Début de updateTicket pour ID: {}", id);
+
+        // Charger le ticket existant
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Ticket not found with id: " + id));
+
+        // Mettre à jour les champs
+        ticket.setTitre(ticketDTO.getTitre());
+        ticket.setDescription(ticketDTO.getDescription());
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        // Sauvegarder le ticket mis à jour
+        Ticket savedTicket = ticketRepository.save(ticket);
+        logger.debug("Ticket mis à jour avec ID: {}", savedTicket.getId());
+
+        // Gérer les relations sales
+        if (ticketDTO.getSales() != null) {
+            // Charger les sales existantes associées au ticket
+            List<Sale> currentSales = saleRepository.findSalesByTicketId(id);
+            Set<Integer> currentSaleIds = currentSales.stream()
+                    .map(Sale::getId)
+                    .collect(Collectors.toSet());
+            Set<Integer> newSaleIds = ticketDTO.getSales().stream().collect(Collectors.toSet());
+
+            // Charger toutes les sales demandées
+            List<Sale> newSales = saleRepository.findAllById(newSaleIds);
+            if (newSales.size() != newSaleIds.size()) {
+                newSaleIds.removeAll(newSales.stream().map(Sale::getId).collect(Collectors.toSet()));
+                throw new RuntimeException("Sales not found with ids: " + newSaleIds);
+            }
+
+            // Supprimer les anciennes associations
+            for (Sale sale : currentSales) {
+                if (!newSaleIds.contains(sale.getId())) {
+                    sale.getTickets().remove(savedTicket);
+                    saleRepository.save(sale);
+                }
+            }
+
+            // Ajouter les nouvelles associations
+            for (Sale sale : newSales) {
+                if (!currentSaleIds.contains(sale.getId())) {
+                    sale.getTickets().add(savedTicket);
+                    saleRepository.save(sale);
+                }
+            }
+        }
+
+        // Recharger le ticket avec les sales pour la réponse
+        Ticket updatedTicketWithSales = ticketRepository.findByIdWithSales(id)
+                .orElseThrow(() -> new RuntimeException("Ticket not found after update"));
+        return new TicketResponseDTO(updatedTicketWithSales);
+    }
+
+    /*public Ticket updateTicket(Integer id, Ticket ticketDetail) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException(Ticket.class.getSimpleName() + " not found with id: " + id));
+        
+        ticket.setTitre(ticketDetail.getTitre());
+        ticket.setDescription(ticketDetail.getDescription());
+        if (ticketDetail.getSales() != null) {
+        	ticket.setSales(ticketDetail.getSales());
+        }
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        return ticketRepository.save(ticket);
+    }*/
+
+    public void deleteTicket(Integer id) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException(Ticket.class.getSimpleName() + " not found with id: " + id));
+        
+        ticketRepository.delete(ticket);
+    }
+}

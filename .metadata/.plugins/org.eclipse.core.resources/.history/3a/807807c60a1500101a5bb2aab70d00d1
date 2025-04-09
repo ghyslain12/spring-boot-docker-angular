@@ -1,0 +1,67 @@
+package com.example.backend.security;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+public class SecurityConfigTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Value("${jwt.enable:true}")
+    private boolean jwtEnabled;
+
+    @Test
+    void testProtectedEndpointNoToken() throws Exception {
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/material"))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(get("/api/material"))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void testProtectedEndpointWithValidToken() throws Exception {
+        String token = jwtUtil.generateToken("testuser@example.com");
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/material")
+                    .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        } else {
+            // Avec jwt.enable=false, le token est ignoré, et l'accès est autorisé
+            mockMvc.perform(get("/api/material")
+                    .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void testProtectedEndpointWithInvalidToken() throws Exception {
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/material")
+                    .header("Authorization", "Bearer invalidtoken"))
+                    .andExpect(status().isForbidden());
+        } else {
+            // Avec jwt.enable=false, même un token invalide n'empêche pas l'accès
+            mockMvc.perform(get("/api/material")
+                    .header("Authorization", "Bearer invalidtoken"))
+                    .andExpect(status().isOk());
+        }
+    }
+}

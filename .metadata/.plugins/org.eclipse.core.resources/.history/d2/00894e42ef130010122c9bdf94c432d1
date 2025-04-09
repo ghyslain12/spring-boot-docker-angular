@@ -1,0 +1,16 @@
+openapi: 3.0.0
+info:
+  title: 'API Test Minimale'
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      summary: 'Un endpoint de test'
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Hello World"

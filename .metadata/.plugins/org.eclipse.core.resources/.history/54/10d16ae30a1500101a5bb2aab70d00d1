@@ -1,0 +1,135 @@
+package com.example.backend.service;
+
+import com.example.backend.entity.User;
+import com.example.backend.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+@Transactional
+@ActiveProfiles("test")
+public class UserServiceTest {
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
+
+    @Test
+    void testGetAllUsers() {
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("password");
+        userRepository.save(user);
+
+        List<User> users = userService.getAllUsers();
+
+        assertEquals(1, users.size());
+        assertEquals("TestUser", users.get(0).getName());
+    }
+
+    @Test
+    void testGetUserById() {
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("password");
+        userRepository.save(user);
+
+        User foundUser = userService.getUserById(user.getId());
+
+        assertEquals("TestUser", foundUser.getName());
+    }
+
+    @Test
+    void testGetUserByIdNotFound() {
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            userService.getUserById(999);
+        });
+        assertEquals("User not found with id: 999", exception.getMessage());
+    }
+
+    @Test
+    void testCreateUser() {
+        User user = new User();
+        user.setName("NewUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("newpassword");
+
+        User createdUser = userService.createUser(user);
+
+        assertNotNull(createdUser.getId());
+        assertEquals("NewUser", createdUser.getName());
+        assertNotEquals("newpassword", createdUser.getPassword()); // Vérifie que le mot de passe est encodé
+    }
+
+    @Test
+    void testCreateUserDuplicateEmail() {
+    	String email = "testuser_" + System.currentTimeMillis() + "@example.com";
+
+    	User user = new User();
+        user.setName("TestUser");
+        user.setEmail(email);
+        user.setPassword("password");
+        userRepository.save(user);
+
+        User newUser = new User();
+        newUser.setName("NewUser");
+        newUser.setEmail(email);
+        newUser.setPassword("newpassword");
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            userService.createUser(newUser);
+        });
+        assertEquals("Un user avec l'email '"+email+"' existe déjà.", exception.getMessage());
+    }
+
+    @Test
+    void testUpdateUser() {
+        
+    	User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("password");
+        userRepository.save(user);
+
+    	String emailUpdated = "testuser_" + System.currentTimeMillis() + "@example.com";
+
+    	User userDetail = new User();
+        userDetail.setName("UpdatedUser");
+        userDetail.setEmail(emailUpdated);
+
+        User updatedUser = userService.updateUser(user.getId(), userDetail);
+
+        assertEquals("UpdatedUser", updatedUser.getName());
+        assertEquals(emailUpdated, updatedUser.getEmail());
+    }
+
+    @Test
+    void testDeleteUser() {
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("password");
+        userRepository.save(user);
+
+        userService.deleteUser(user.getId());
+
+        assertFalse(userRepository.findById(user.getId()).isPresent());
+    }
+}

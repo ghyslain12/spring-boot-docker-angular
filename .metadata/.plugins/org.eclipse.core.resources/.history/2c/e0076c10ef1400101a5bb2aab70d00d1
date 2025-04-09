@@ -1,0 +1,185 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.User;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+public class CustomerControllerAuthTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(CustomerControllerAuthTest.class);
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    private Customer testCustomer;
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        customerRepository.deleteAll();
+        userRepository.deleteAll();
+
+        long userCount = userRepository.count();
+        if (userCount > 0) {
+            throw new IllegalStateException("La table users n'est pas vide après deleteAll() : " + userCount + " utilisateurs trouvés");
+        }
+
+        String uniqueEmail = "testuser_" + System.currentTimeMillis() + "@example.com";
+        logger.info("Email généré pour l'utilisateur : {}", uniqueEmail);
+
+        testUser = new User();
+        testUser.setName("TestUser");
+        testUser.setEmail(uniqueEmail);
+        testUser.setPassword("password");
+        userRepository.save(testUser);
+        logger.info("Utilisateur créé avec ID : {}", testUser.getId());
+
+        testCustomer = new Customer();
+        testCustomer.setSurnom("TestCustomer");
+        testCustomer.setUser(testUser);
+        customerRepository.save(testCustomer);
+        logger.info("Customer créé avec ID : {}", testCustomer.getId());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testGetAllCustomersWithAuthSuccess() throws Exception {
+        logger.info("Exécution de testGetAllCustomersWithAuthSuccess");
+        mockMvc.perform(get("/api/client")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].surnom").value("TestCustomer"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testGetCustomerByIdWithAuthSuccess() throws Exception {
+        logger.info("Exécution de testGetCustomerByIdWithAuthSuccess pour Customer ID : {}", testCustomer.getId());
+        mockMvc.perform(get("/api/client/" + testCustomer.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.surnom").value("TestCustomer"))
+                .andExpect(jsonPath("$.user_id").value(testUser.getId()));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testGetCustomerByIdWithAuthNotFound() throws Exception {
+        logger.info("Exécution de testGetCustomerByIdWithAuthNotFound pour ID inexistant : 999");
+        mockMvc.perform(get("/api/client/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testCreateCustomerWithAuthSuccess() throws Exception {
+        logger.info("Exécution de testCreateCustomerWithAuthSuccess");
+        String newCustomerJson = "{\"surnom\":\"NewCustomer\",\"user_id\":" + testUser.getId() + "}";
+        logger.info("JSON envoyé : {}", newCustomerJson);
+
+        mockMvc.perform(post("/api/client")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newCustomerJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.surnom").value("NewCustomer"))
+                .andExpect(jsonPath("$.user_id").value(testUser.getId()));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testCreateCustomerWithAuthInvalidUser() throws Exception {
+        logger.info("Exécution de testCreateCustomerWithAuthInvalidUser");
+        String newCustomerJson = "{\"surnom\":\"NewCustomer\",\"user_id\":999}";
+        logger.info("JSON envoyé : {}", newCustomerJson);
+
+        mockMvc.perform(post("/api/client")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newCustomerJson))
+                .andExpect(status().isNotFound()); // RuntimeException mappée à 404
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testCreateCustomerWithAuthDuplicateSurnom() throws Exception {
+        logger.info("Exécution de testCreateCustomerWithAuthDuplicateSurnom");
+        String newCustomerJson = "{\"surnom\":\"TestCustomer\",\"user_id\":" + testUser.getId() + "}";
+        logger.info("JSON envoyé : {}", newCustomerJson);
+
+        mockMvc.perform(post("/api/client")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newCustomerJson))
+                .andExpect(status().isBadRequest()); // IllegalArgumentException mappée à 400
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testUpdateCustomerWithAuthSuccess() throws Exception {
+        logger.info("Exécution de testUpdateCustomerWithAuthSuccess pour Customer ID : {}", testCustomer.getId());
+        String updatedCustomerJson = "{\"surnom\":\"UpdatedCustomer\",\"user_id\":" + testUser.getId() + "}";
+        logger.info("JSON envoyé : {}", updatedCustomerJson);
+
+        mockMvc.perform(put("/api/client/" + testCustomer.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedCustomerJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.surnom").value("UpdatedCustomer"))
+                .andExpect(jsonPath("$.user_id").value(testUser.getId()));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testUpdateCustomerWithAuthNotFound() throws Exception {
+        logger.info("Exécution de testUpdateCustomerWithAuthNotFound pour ID inexistant : 999");
+        String updatedCustomerJson = "{\"surnom\":\"UpdatedCustomer\",\"user_id\":" + testUser.getId() + "}";
+
+        mockMvc.perform(put("/api/client/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedCustomerJson))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testDeleteCustomerWithAuthSuccess() throws Exception {
+        logger.info("Exécution de testDeleteCustomerWithAuthSuccess pour Customer ID : {}", testCustomer.getId());
+        mockMvc.perform(delete("/api/client/" + testCustomer.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser2@example.com", roles = {"USER"})
+    void testDeleteCustomerWithAuthNotFound() throws Exception {
+        logger.info("Exécution de testDeleteCustomerWithAuthNotFound pour ID inexistant : 999");
+        mockMvc.perform(delete("/api/client/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+}

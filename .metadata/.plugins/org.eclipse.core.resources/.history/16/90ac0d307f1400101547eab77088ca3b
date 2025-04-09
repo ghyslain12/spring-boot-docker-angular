@@ -1,0 +1,51 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.Material;
+import com.example.backend.service.MaterialService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/material")
+public class MaterialController {
+    @Autowired
+    private MaterialService materialService;
+
+    @GetMapping
+    public List<Material> getAllMaterials() {
+        return materialService.getAllMaterials();
+    }
+
+    @GetMapping("/{id}")
+    public Material getMaterialById(@PathVariable Integer id) {
+        return materialService.getMaterialById(id);
+    }
+
+    @PostMapping
+    public Material createMaterial(@RequestBody Material material) {
+        return materialService.createMaterial(material);
+    }
+
+    @PutMapping("/{id}")
+    public Material updateMaterial(@PathVariable Integer id, @RequestBody Material material) {
+        return materialService.updateMaterial(id, material);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteMaterial(@PathVariable Integer id) {
+        materialService.deleteMaterial(id);
+    }
+    
+    @GetMapping("/ping")
+    public Map<String, Object> ping() {
+        return new Map<String, String> (
+        		  Map.of("key1","value1", "key2", "value2"));
+        /*Map<String, Object> map = new HashMap<>();
+        map.put("key1", "value1");
+        return map;*/
+    }
+}

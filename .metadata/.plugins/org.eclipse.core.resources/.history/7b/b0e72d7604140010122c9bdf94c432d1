@@ -1,0 +1,36 @@
+package com.example.backend.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springdoc.core.properties.SwaggerUiConfigProperties;
+import org.springdoc.core.properties.AbstractSwaggerUiConfigProperties.SwaggerUrl;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Configuration
+@ConditionalOnProperty(name = "springdoc.api-docs.enabled", havingValue = "false")
+public class SwaggerConfig {
+    private static final Logger logger = LoggerFactory.getLogger(SwaggerConfig.class);
+
+    @Bean
+    public SwaggerUiConfigProperties swaggerUiConfigProperties() {
+        SwaggerUiConfigProperties properties = new SwaggerUiConfigProperties();
+        properties.setEnabled(true);
+
+        Set<SwaggerUrl> urls = properties.getUrls();
+        if (urls == null) {
+            urls = new HashSet<>();
+            properties.setUrls(urls);
+        }
+
+        SwaggerUrl swaggerUrl = new SwaggerUrl("default", "/openapi.yaml", "CRUD API Spring Boot");
+        urls.add(swaggerUrl);
+
+        logger.info("SwaggerUiConfigProperties initialized with URL: /openapi.yaml");
+        return properties;
+    }
+}

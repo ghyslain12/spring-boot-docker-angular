@@ -1,0 +1,148 @@
+package com.example.backend.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@Entity
+@Table(name = "sales")
+public class Sale {
+	@Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+
+    @Column(nullable = false)
+    private String titre;
+
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    private String description;
+
+    @Column(name = "created_at")
+    @JsonProperty("created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    @JsonProperty("updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @ManyToMany
+    @JoinTable(
+        name = "material_sale",
+        joinColumns = @JoinColumn(name = "sale_id"),
+        inverseJoinColumns = @JoinColumn(name = "material_id")
+    )
+    //private Set<Material> materials = new HashSet<>();
+    private Set<Material> materials = new HashSet<>();
+    
+ // Getter dynamique pour générer les champs "material_X" dans le JSON
+    @JsonAnyGetter
+    public Map<String, Boolean> getMaterialsAsMap() {
+        Map<String, Boolean> materialMap = new HashMap<>();
+        for (Material material : materials) {
+            materialMap.put("material_" + material.getId(), true);
+        }
+        return materialMap;
+    }
+
+    // Setter dynamique pour accepter les champs "material_X" depuis le JSON
+    @JsonAnySetter
+    public void setMaterial(String key, Boolean value) {
+        if (key.startsWith("material_") && value != null && value) {
+            int materialId = Integer.parseInt(key.substring("material_".length()));
+            Material material = new Material();
+            material.setId(materialId); // L'ID est suffisant pour l'association
+            this.materials.add(material);
+        }
+    }
+    
+    @JsonProperty("customer_id")
+    public Integer getCustomerId() {
+        return customer != null ? customer.getId() : null;
+    }
+
+	@Override
+	public String toString() {
+	    return "Sale{id=" + id + ", titre=" + titre + "}";
+	}
+    
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public Customer getCustomer() {
+		return customer;
+	}
+
+	public void setCustomer(Customer customer) {
+		this.customer = customer;
+	}
+
+	public String getTitre() {
+		return titre;
+	}
+
+	public void setTitre(String titre) {
+		this.titre = titre;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(LocalDateTime updatedAt) {
+		this.updatedAt = updatedAt;
+	}
+
+	public Set<Material> getMaterials() {
+		return materials;
+	}
+
+	public void setMaterials(Set<Material> materials) {
+		this.materials = materials;
+	}
+	
+	public void addMaterial(Material material) {
+        this.materials.add(material);
+    }
+
+    public void removeMaterial(Material material) {
+        this.materials.remove(material);
+    }
+
+    public void clearMaterials() {
+        for (Material material : new HashSet<>(materials)) { 
+            removeMaterial(material);
+        }
+    }
+}

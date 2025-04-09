@@ -1,0 +1,30 @@
+package com.example.backend.controller;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/config") 
+public class JwtConfigController {
+
+    @Value("${jwt.enable:false}") 
+    private boolean jwtEnabled;
+
+    @GetMapping("/jwt")
+    public Map<String, String> getJwtEnable() {
+        Map<String, String> map = new HashMap<String, String> (
+    		Map.of(
+				"jwt_enabled",Boolean.toString(jwtEnabled), 
+			)
+		);
+
+        return map;
+    }
+}

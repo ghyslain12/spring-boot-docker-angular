@@ -1,0 +1,217 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.User;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+public class CustomerControllerNoAuthTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(CustomerControllerNoAuthTest.class);
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Value("${jwt.enable:true}")
+    private boolean jwtEnabled;
+
+    private Customer testCustomer;
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        customerRepository.deleteAll();
+        userRepository.deleteAll();
+
+        long userCount = userRepository.count();
+        if (userCount > 0) {
+            throw new IllegalStateException("La table users n'est pas vide après deleteAll() : " + userCount + " utilisateurs trouvés");
+        }
+
+        String uniqueEmail = "testuser_" + System.currentTimeMillis() + "@example.com";
+        logger.info("Email généré pour l'utilisateur : {}", uniqueEmail);
+
+        testUser = new User();
+        testUser.setName("TestUser");
+        testUser.setEmail(uniqueEmail);
+        testUser.setPassword("password");
+        userRepository.save(testUser);
+        logger.info("Utilisateur créé avec ID : {}", testUser.getId());
+
+        testCustomer = new Customer();
+        testCustomer.setSurnom("TestCustomer");
+        testCustomer.setUser(testUser);
+        customerRepository.save(testCustomer);
+        logger.info("Customer créé avec ID : {}", testCustomer.getId());
+    }
+
+    @Test
+    void testGetAllCustomersWithoutAuth() throws Exception {
+        logger.info("Exécution de testGetAllCustomersWithoutAuth");
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/client")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(get("/api/client")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].surnom").value("TestCustomer"));
+        }
+    }
+
+    @Test
+    void testGetCustomerByIdWithoutAuth() throws Exception {
+        logger.info("Exécution de testGetCustomerByIdWithoutAuth pour Customer ID : {}", testCustomer.getId());
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/client/" + testCustomer.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(get("/api/client/" + testCustomer.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.surnom").value("TestCustomer"));
+        }
+    }
+
+    @Test
+    void testGetCustomerByIdWithoutAuthNotFound() throws Exception {
+        logger.info("Exécution de testGetCustomerByIdWithoutAuthNotFound pour ID inexistant : 999");
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/client/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(get("/api/client/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
+    void testCreateCustomerWithoutAuth() throws Exception {
+        logger.info("Exécution de testCreateCustomerWithoutAuth");
+        String newCustomerJson = "{\"surnom\":\"NewCustomer\",\"user_id\":" + testUser.getId() + "}";
+        logger.info("JSON envoyé : {}", newCustomerJson);
+        if (jwtEnabled) {
+            mockMvc.perform(post("/api/client")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(newCustomerJson))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(post("/api/client")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(newCustomerJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.surnom").value("NewCustomer"));
+        }
+    }
+
+    @Test
+    void testCreateCustomerWithoutAuthInvalidUser() throws Exception {
+        logger.info("Exécution de testCreateCustomerWithoutAuthInvalidUser");
+        String newCustomerJson = "{\"surnom\":\"NewCustomer\",\"user_id\":999}";
+        logger.info("JSON envoyé : {}", newCustomerJson);
+        if (jwtEnabled) {
+            mockMvc.perform(post("/api/client")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(newCustomerJson))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(post("/api/client")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(newCustomerJson))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
+    void testUpdateCustomerWithoutAuth() throws Exception {
+        logger.info("Exécution de testUpdateCustomerWithoutAuth pour Customer ID : {}", testCustomer.getId());
+        String updatedCustomerJson = "{\"surnom\":\"UpdatedCustomer\",\"user_id\":" + testUser.getId() + "}";
+        logger.info("JSON envoyé : {}", updatedCustomerJson);
+        if (jwtEnabled) {
+            mockMvc.perform(put("/api/client/" + testCustomer.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedCustomerJson))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(put("/api/client/" + testCustomer.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedCustomerJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.surnom").value("UpdatedCustomer"));
+        }
+    }
+
+    @Test
+    void testUpdateCustomerWithoutAuthNotFound() throws Exception {
+        logger.info("Exécution de testUpdateCustomerWithoutAuthNotFound pour ID inexistant : 999");
+        String updatedCustomerJson = "{\"surnom\":\"UpdatedCustomer\",\"user_id\":" + testUser.getId() + "}";
+        if (jwtEnabled) {
+            mockMvc.perform(put("/api/client/999")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedCustomerJson))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(put("/api/client/999")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedCustomerJson))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
+    void testDeleteCustomerWithoutAuth() throws Exception {
+        logger.info("Exécution de testDeleteCustomerWithoutAuth pour Customer ID : {}", testCustomer.getId());
+        if (jwtEnabled) {
+            mockMvc.perform(delete("/api/client/" + testCustomer.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(delete("/api/client/" + testCustomer.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void testDeleteCustomerWithoutAuthNotFound() throws Exception {
+        logger.info("Exécution de testDeleteCustomerWithoutAuthNotFound pour ID inexistant : 999");
+        if (jwtEnabled) {
+            mockMvc.perform(delete("/api/client/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(delete("/api/client/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+        }
+    }
+}

@@ -1,0 +1,155 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.Customer;
+import com.example.backend.entity.User;
+import com.example.backend.repository.CustomerRepository;
+import com.example.backend.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+public class CustomerControllerNoAuthTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(CustomerControllerNoAuthTest.class);
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    private Customer testCustomer;
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        customerRepository.deleteAll();
+        userRepository.deleteAll();
+
+        long userCount = userRepository.count();
+        if (userCount > 0) {
+            throw new IllegalStateException("La table users n'est pas vide après deleteAll() : " + userCount + " utilisateurs trouvés");
+        }
+
+        String uniqueEmail = "testuser_" + System.currentTimeMillis() + "@example.com";
+        logger.info("Email généré pour l'utilisateur : {}", uniqueEmail);
+
+        testUser = new User();
+        testUser.setName("TestUser");
+        testUser.setEmail(uniqueEmail);
+        testUser.setPassword("password");
+        userRepository.save(testUser);
+        logger.info("Utilisateur créé avec ID : {}", testUser.getId());
+
+        testCustomer = new Customer();
+        testCustomer.setSurnom("TestCustomer");
+        testCustomer.setUser(testUser);
+        customerRepository.save(testCustomer);
+        logger.info("Customer créé avec ID : {}", testCustomer.getId());
+    }
+
+    @Test
+    void testGetAllCustomersWithoutAuthForbidden() throws Exception {
+        logger.info("Exécution de testGetAllCustomersWithoutAuthForbidden");
+        mockMvc.perform(get("/api/client")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testGetCustomerByIdWithoutAuthForbidden() throws Exception {
+        logger.info("Exécution de testGetCustomerByIdWithoutAuthForbidden pour Customer ID : {}", testCustomer.getId());
+        mockMvc.perform(get("/api/client/" + testCustomer.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testGetCustomerByIdWithoutAuthNotFoundForbidden() throws Exception {
+        logger.info("Exécution de testGetCustomerByIdWithoutAuthNotFoundForbidden pour ID inexistant : 999");
+        mockMvc.perform(get("/api/client/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testCreateCustomerWithoutAuthForbidden() throws Exception {
+        logger.info("Exécution de testCreateCustomerWithoutAuthForbidden");
+        String newCustomerJson = "{\"surnom\":\"NewCustomer\",\"user_id\":" + testUser.getId() + "}";
+        logger.info("JSON envoyé : {}", newCustomerJson);
+
+        mockMvc.perform(post("/api/client")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newCustomerJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testCreateCustomerWithoutAuthInvalidUserForbidden() throws Exception {
+        logger.info("Exécution de testCreateCustomerWithoutAuthInvalidUserForbidden");
+        String newCustomerJson = "{\"surnom\":\"NewCustomer\",\"user_id\":999}";
+        logger.info("JSON envoyé : {}", newCustomerJson);
+
+        mockMvc.perform(post("/api/client")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newCustomerJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testUpdateCustomerWithoutAuthForbidden() throws Exception {
+        logger.info("Exécution de testUpdateCustomerWithoutAuthForbidden pour Customer ID : {}", testCustomer.getId());
+        String updatedCustomerJson = "{\"surnom\":\"UpdatedCustomer\",\"user_id\":" + testUser.getId() + "}";
+        logger.info("JSON envoyé : {}", updatedCustomerJson);
+
+        mockMvc.perform(put("/api/client/" + testCustomer.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedCustomerJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testUpdateCustomerWithoutAuthNotFoundForbidden() throws Exception {
+        logger.info("Exécution de testUpdateCustomerWithoutAuthNotFoundForbidden pour ID inexistant : 999");
+        String updatedCustomerJson = "{\"surnom\":\"UpdatedCustomer\",\"user_id\":" + testUser.getId() + "}";
+
+        mockMvc.perform(put("/api/client/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedCustomerJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testDeleteCustomerWithoutAuthForbidden() throws Exception {
+        logger.info("Exécution de testDeleteCustomerWithoutAuthForbidden pour Customer ID : {}", testCustomer.getId());
+        mockMvc.perform(delete("/api/client/" + testCustomer.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void testDeleteCustomerWithoutAuthNotFoundForbidden() throws Exception {
+        logger.info("Exécution de testDeleteCustomerWithoutAuthNotFoundForbidden pour ID inexistant : 999");
+        mockMvc.perform(delete("/api/client/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+}

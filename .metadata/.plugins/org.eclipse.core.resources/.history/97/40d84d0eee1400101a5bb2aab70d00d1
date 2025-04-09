@@ -1,0 +1,147 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.User;
+import com.example.backend.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+public class UserControllerAuthTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+
+        testUser = new User();
+        testUser.setName("TestUser");
+        testUser.setEmail("testuser@example.com");
+        testUser.setPassword("password");
+        userRepository.save(testUser);
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testGetAllUsersWithAuthSuccess() throws Exception {
+        mockMvc.perform(get("/api/utilisateur")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("TestUser"))
+                .andExpect(jsonPath("$[0].email").value("testuser@example.com"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testGetUserByIdWithAuthSuccess() throws Exception {
+        mockMvc.perform(get("/api/utilisateur/" + testUser.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("TestUser"))
+                .andExpect(jsonPath("$.email").value("testuser@example.com"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testGetUserByIdWithAuthNotFound() throws Exception {
+        mockMvc.perform(get("/api/utilisateur/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testCreateUserWithAuthSuccess() throws Exception {
+        String newUserJson = "{\"name\":\"NewUser\",\"email\":\"newuser@example.com\",\"password\":\"newpassword\"}";
+
+        mockMvc.perform(post("/api/utilisateur")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newUserJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("NewUser"))
+                .andExpect(jsonPath("$.email").value("newuser@example.com"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testCreateUserWithAuthDuplicateEmail() throws Exception {
+        String newUserJson = "{\"name\":\"NewUser\",\"email\":\"testuser@example.com\",\"password\":\"newpassword\"}";
+
+        mockMvc.perform(post("/api/utilisateur")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(newUserJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testUpdateUserWithAuthSuccess() throws Exception {
+        String updatedUserJson = "{\"name\":\"UpdatedUser\",\"email\":\"updateduser@example.com\",\"password\":\"updatedpassword\"}";
+
+        mockMvc.perform(put("/api/utilisateur/" + testUser.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedUserJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("UpdatedUser"))
+                .andExpect(jsonPath("$.email").value("updateduser@example.com"));
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testUpdateUserWithAuthNotFound() throws Exception {
+        String updatedUserJson = "{\"name\":\"UpdatedUser\",\"email\":\"updateduser@example.com\",\"password\":\"updatedpassword\"}";
+
+        mockMvc.perform(put("/api/utilisateur/999")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updatedUserJson))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testDeleteUserWithAuthSuccess() throws Exception {
+        mockMvc.perform(delete("/api/utilisateur/" + testUser.getId())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testDeleteUserWithAuthNotFound() throws Exception {
+        mockMvc.perform(delete("/api/utilisateur/999")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser@example.com", roles = {"USER"})
+    void testPingWithAuthSuccess() throws Exception {
+        mockMvc.perform(get("/api/utilisateur/ping")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message").value("ping"));
+    }
+}

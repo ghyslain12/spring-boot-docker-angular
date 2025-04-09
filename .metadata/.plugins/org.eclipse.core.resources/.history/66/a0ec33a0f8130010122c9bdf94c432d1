@@ -1,0 +1,17 @@
+package com.example.backend.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springdoc.core.properties.SwaggerUiConfigProperties;
+import org.springdoc.webmvc.ui.SwaggerWelcomeWebMvc;
+
+@Configuration
+public class SwaggerConfig {
+
+    @Bean
+    public SwaggerWelcomeWebMvc swaggerWelcome(SwaggerUiConfigProperties swaggerUiConfig) {
+        swaggerUiConfig.setEnabled(true); // Forcer Swagger UI actif
+        ((Object) swaggerUiConfig.getUrls()).put("CRUD API Spring Boot", "/openapi.yaml"); // Charger le YAML
+        return new SwaggerWelcomeWebMvc(swaggerUiConfig, null, null);
+    }
+}

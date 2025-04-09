@@ -1,0 +1,22 @@
+package com.example.backend.repository;
+
+import com.example.backend.entity.Ticket;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+
+public interface TicketRepository extends JpaRepository<Ticket, Integer> {
+	boolean existsByTitre(String titre);
+	
+	@Query("SELECT t FROM Ticket t LEFT JOIN FETCH t.sales WHERE t.id = :id")
+    Optional<Ticket> findByIdWithSales(Integer id);
+
+
+    @Modifying
+    @Query(value = "DELETE FROM sale_ticket WHERE ticket_id = :ticketId", nativeQuery = true)
+    void deleteAllSalesByTicketId(Integer ticketId);
+}

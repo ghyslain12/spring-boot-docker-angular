@@ -1,0 +1,40 @@
+package com.example.backend.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
+
+public class SaleDTO {
+    private String titre;
+    private String description;
+
+    @JsonProperty("customer_id")
+    private Integer customerId;
+
+    private List<Integer> materials;
+
+    public String getTitre() {
+        return titre;
+    }
+    public void setTitre(String titre) {
+        this.titre = titre;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public Integer getCustomerId() {
+        return customerId;
+    }
+    public void setCustomerId(Integer customerId) {
+        this.customerId = customerId;
+    }
+    public List < Integer > getMaterials() {
+        return materials;
+    }
+    public void setMaterials(List < Integer > materials) {
+        this.materials = materials;
+    }
+}

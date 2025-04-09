@@ -1,0 +1,102 @@
+package com.example.backend.security;
+
+import com.example.backend.entity.User;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+@ActiveProfiles("test")
+public class JwtFilterTest {
+
+    @Autowired
+    private JwtFilter jwtFilter;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
+
+    @MockBean
+    private HttpServletRequest request;
+
+    @MockBean
+    private HttpServletResponse response;
+
+    @MockBean
+    private FilterChain filterChain;
+
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        testUser = new User();
+        testUser.setEmail("testuser@example.com");
+        testUser.setPassword("$2a$10$examplehashedpassword");
+        testUser.setName("TestUser");
+
+        SecurityContextHolder.clearContext(); // Réinitialiser le contexte avant chaque test
+    }
+
+    @Test
+    void testPublicPathSkipsFilter() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/login");
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain, times(1)).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void testValidTokenAuthenticatesUser() throws Exception {
+        String token = jwtUtil.generateToken("testuser@example.com");
+        when(request.getRequestURI()).thenReturn("/api/material");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(userDetailsService.loadUserByUsername("testuser@example.com"))
+                .thenReturn(org.springframework.security.core.userdetails.User
+                        .withUsername("testuser@example.com")
+                        .password("$2a$10$examplehashedpassword")
+                        .authorities("USER")
+                        .build());
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain, times(1)).doFilter(request, response);
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals("testuser@example.com", SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+
+    @Test
+    void testNoTokenDoesNotAuthenticate() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/material");
+        when(request.getHeader("Authorization")).thenReturn(null);
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain, times(1)).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void testInvalidTokenDoesNotAuthenticate() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/material");
+        when(request.getHeader("Authorization")).thenReturn("Bearer invalidtoken");
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain, times(1)).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+}

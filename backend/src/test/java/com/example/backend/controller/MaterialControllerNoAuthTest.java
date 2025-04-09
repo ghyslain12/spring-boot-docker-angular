@@ -1,0 +1,168 @@
+package com.example.backend.controller;
+
+import com.example.backend.entity.Material;
+import com.example.backend.repository.MaterialRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+public class MaterialControllerNoAuthTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private MaterialRepository materialRepository;
+
+    @Value("${jwt.enable:true}")
+    private boolean jwtEnabled;
+
+    private Material testMaterial;
+
+    @BeforeEach
+    void setUp() {
+        materialRepository.deleteAll();
+
+        testMaterial = new Material();
+        testMaterial.setDesignation("TestMaterial");
+        materialRepository.save(testMaterial);
+    }
+
+    @Test
+    void testGetAllMaterialsWithoutAuth() throws Exception {
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/material")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(get("/api/material")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].designation").value("TestMaterial"));
+        }
+    }
+
+    @Test
+    void testGetMaterialByIdWithoutAuth() throws Exception {
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/material/" + testMaterial.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(get("/api/material/" + testMaterial.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.designation").value("TestMaterial"));
+        }
+    }
+
+    @Test
+    void testGetMaterialByIdWithoutAuthNotFound() throws Exception {
+        if (jwtEnabled) {
+            mockMvc.perform(get("/api/material/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(get("/api/material/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
+    void testCreateMaterialWithoutAuth() throws Exception {
+        String newMaterialJson = "{\"designation\":\"NewMaterial\"}";
+        if (jwtEnabled) {
+            mockMvc.perform(post("/api/material")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(newMaterialJson))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(post("/api/material")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(newMaterialJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.designation").value("NewMaterial"));
+        }
+    }
+
+    @Test
+    void testUpdateMaterialWithoutAuth() throws Exception {
+        String updatedMaterialJson = "{\"designation\":\"UpdatedMaterial\"}";
+        if (jwtEnabled) {
+            mockMvc.perform(put("/api/material/" + testMaterial.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedMaterialJson))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(put("/api/material/" + testMaterial.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedMaterialJson))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.designation").value("UpdatedMaterial"));
+        }
+    }
+
+    @Test
+    void testUpdateMaterialWithoutAuthNotFound() throws Exception {
+        String updatedMaterialJson = "{\"designation\":\"UpdatedMaterial\"}";
+        if (jwtEnabled) {
+            mockMvc.perform(put("/api/material/999")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedMaterialJson))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(put("/api/material/999")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(updatedMaterialJson))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
+    void testDeleteMaterialWithoutAuth() throws Exception {
+        if (jwtEnabled) {
+            mockMvc.perform(delete("/api/material/" + testMaterial.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(delete("/api/material/" + testMaterial.getId())
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void testDeleteMaterialWithoutAuthNotFound() throws Exception {
+        if (jwtEnabled) {
+            mockMvc.perform(delete("/api/material/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        } else {
+            mockMvc.perform(delete("/api/material/999")
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
+    void testPingWithoutAuthPermitted() throws Exception {
+        mockMvc.perform(get("/api/material/ping")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+}

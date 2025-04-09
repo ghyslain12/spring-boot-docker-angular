@@ -1,0 +1,85 @@
+package com.example.backend.dto;
+
+import com.example.backend.entity.Material;
+import com.example.backend.entity.Sale;
+import com.example.backend.entity.Ticket;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+public class SaleMaterialResponseDTO {
+    private Integer id;
+    private String titre;
+    private String description;
+    private Set<Material> ar;
+
+    @JsonProperty("created_at")
+    private LocalDateTime createdAt;
+
+    @JsonProperty("updated_at")
+    private LocalDateTime updatedAt;
+
+    @JsonProperty("customer_id")
+    private Integer customerId;
+    
+    private List<MaterialResponseDTO> materials;
+
+    public SaleMaterialResponseDTO(Sale sale) {
+        this.id = sale.getId();
+        this.titre = sale.getTitre() + "giiiiiiii";
+        this.description = sale.getDescription();
+        this.customerId = sale.getCustomerId();
+        this.createdAt = sale.getCreatedAt();
+        this.updatedAt = sale.getUpdatedAt();
+        //this.ar = sale.getMaterials();
+        this.materials = sale.getMaterials().stream()
+                .map(material -> new MaterialResponseDTO(material, sale.getId()))
+                .collect(Collectors.toList());
+    }
+
+    public Integer getId() {
+        return id;
+    }
+    public void setId(Integer id) {
+        this.id = id;
+    }
+    public String getTitre() {
+        return titre;
+    }
+    public void setTitre(String titre) {
+        this.titre = titre;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    public List < MaterialResponseDTO > getMaterials() {
+        return materials;
+    }
+    public void setMaterils(List < MaterialResponseDTO > materials) {
+        this.materials = materials;
+    }
+    public Integer getCustomerId() {
+        return customerId;
+    }
+    public void setCustomerId(Integer customerId) {
+        this.customerId = customerId;
+    }
+}

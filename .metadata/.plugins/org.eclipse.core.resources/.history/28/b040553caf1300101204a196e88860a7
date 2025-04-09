@@ -1,0 +1,109 @@
+package com.example.backend.dto;
+
+import com.example.backend.entity.Sale;
+import com.example.backend.service.TicketService;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.LocalDateTime;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class MaterialResponseDTO {
+    private Integer id;
+    private String titre;
+    private String description;
+
+    @JsonProperty("customer_id")
+    private Integer customerId;
+
+    @JsonProperty("created_at")
+    private LocalDateTime createdAt;
+
+    @JsonProperty("updated_at")
+    private LocalDateTime updatedAt;
+
+    private PivotMaterial pivot;
+	private static final Logger logger = LoggerFactory.getLogger(TicketService.class);
+
+    public MaterialResponseDTO() {}
+
+    public MaterialResponseDTO(Sale sale, Integer ticketId) {
+        this.id = sale.getId();
+        this.titre = sale.getTitre();
+        this.description = sale.getDescription();
+        this.customerId = sale.getCustomerId();
+        this.createdAt = sale.getCreatedAt();
+        this.updatedAt = sale.getUpdatedAt();
+        this.pivot = new PivotMaterial(ticketId, sale.getId());
+    }
+
+    public Integer getId() {
+        return id;
+    }
+    public void setId(Integer id) {
+        this.id = id;
+    }
+    public String getTitre() {
+        return titre;
+    }
+    public void setTitre(String titre) {
+        this.titre = titre;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public Integer getCustomerId() {
+        return customerId;
+    }
+    public void setCustomerId(Integer customerId) {
+        this.customerId = customerId;
+    }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    public PivotMaterial getPivotMaterial() {
+        return pivot;
+    }
+    public void setPivotMaterial(PivotMaterial pivot) {
+        this.pivot = pivot;
+    }
+}
+
+
+class PivotMaterial {
+    @JsonProperty("material_id")
+    private Integer materialId;
+
+    @JsonProperty("sale_id")
+    private Integer saleId;
+
+    public PivotMaterial(Integer saleId, Integer materialId) {
+        this.saleId = saleId;
+        this.materialId = materialId;
+    }
+
+    public Integer getTicketId() {
+        return ticketId;
+    }
+    public void setTicketId(Integer ticketId) {
+        this.ticketId = ticketId;
+    }
+    public Integer getSaleId() {
+        return saleId;
+    }
+    public void setSaleId(Integer saleId) {
+        this.saleId = saleId;
+    }
+}

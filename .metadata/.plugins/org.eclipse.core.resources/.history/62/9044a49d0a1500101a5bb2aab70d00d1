@@ -1,0 +1,102 @@
+package com.example.backend.repository;
+
+import com.example.backend.entity.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@DataJpaTest(excludeAutoConfiguration = SecurityAutoConfiguration.class) 
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) 
+@ActiveProfiles("test")
+public class UserRepositoryTest {
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
+
+    @Test
+    void testSaveUser() {
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); 
+        user.setPassword("password");
+
+        User savedUser = userRepository.save(user);
+
+        assertNotNull(savedUser.getId());
+        assertEquals("TestUser", savedUser.getName());
+    }
+
+    @Test
+    void testFindById() {
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("password");
+        entityManager.persist(user);
+
+        User foundUser = userRepository.findById(user.getId()).orElse(null);
+
+        assertNotNull(foundUser);
+        assertEquals("TestUser", foundUser.getName());
+    }
+
+    @Test
+    void testExistsByEmail() {
+    	String email = "testuser_" + System.currentTimeMillis() + "@example.com";
+
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail(email);
+        user.setPassword("password");
+        entityManager.persist(user);
+
+        boolean exists = userRepository.existsByEmail(email);
+
+        assertTrue(exists);
+        assertFalse(userRepository.existsByEmail("unknown@example.com"));
+    }
+
+    @Test
+    void testFindByEmail() {
+    	String email = "testuser_" + System.currentTimeMillis() + "@example.com";
+
+    	User user = new User();
+        user.setName("TestUser");
+        user.setEmail(email);
+        user.setPassword("password");
+        entityManager.persist(user);
+
+        User foundUser = userRepository.findByEmail(email);
+
+        assertNotNull(foundUser);
+        assertEquals("TestUser", foundUser.getName());
+    }
+
+    @Test
+    void testDeleteUser() {
+        User user = new User();
+        user.setName("TestUser");
+        user.setEmail("testuser_" + System.currentTimeMillis() + "@example.com"); // Email unique
+        user.setPassword("password");
+        entityManager.persist(user);
+
+        userRepository.delete(user);
+
+        assertFalse(userRepository.findById(user.getId()).isPresent());
+    }
+}
