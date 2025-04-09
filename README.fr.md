@@ -35,7 +35,7 @@ docker-compose down
 - Front-end: Angular & JWT connexion / inscription
 - Testing
 - Swagger
-- Docker Apache Mysql
+- Docker Mysql
 
 ## Services
 - Angular (front-end): http://localhost:4200
